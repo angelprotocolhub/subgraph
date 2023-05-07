@@ -1,80 +1,131 @@
-import { BigInt } from "@graphprotocol/graph-ts"
+import { Address, BigInt, Bytes } from "@graphprotocol/graph-ts";
 import {
-  Angel,
-  AddedBeneficiary,
-  Angel__AccountCreated,
-  AssetClaimed,
-  AssetReclaimed,
-  AssetSent
-} from "../generated/Angel/Angel"
-import { ExampleEntity } from "../generated/schema"
+  AddedBeneficiary as AddedBeneficiaryEvent,
+  AssetClaimed as AssetClaimedEvent,
+  AssetReclaimed as AssetReclaimedEvent,
+  AssetSent as AssetSentEvent,
+} from "../generated/Angel/Angel";
 
-export function handleAddedBeneficiary(event: AddedBeneficiary): void {
-  // Entities can be loaded from the store using a string ID; this ID
-  // needs to be unique across all entities of the same type
-  let entity = ExampleEntity.load(event.transaction.from)
+import { TransactionEntity, BeneficiaryEntity } from "../generated/schema";
 
-  // Entities only exist after they have been saved to the store;
-  // `null` checks allow to create entities on demand
-  if (!entity) {
-    entity = new ExampleEntity(event.transaction.from)
+export function handleAddedBeneficiary(event: AddedBeneficiaryEvent): void {
+  let beneficiaryEntity = new BeneficiaryEntity(
+    generateBeneficiaryID(
+      event.transaction.hash,
+      event.params.sender,
+      event.params.sender
+    )
+  );
+  beneficiaryEntity.sender = event.params.sender;
+  beneficiaryEntity.beneficiary = event.params.beneficiary;
 
-    // Entity fields can be set using simple assignments
-    entity.count = BigInt.fromI32(0)
-  }
-
-  // BigInt and BigDecimal math are supported
-  entity.count = entity.count + BigInt.fromI32(1)
-
-  // Entity fields can be set based on event parameters
-  entity.sender = event.params.sender
-  entity.beneficiary = event.params.beneficiary
-
-  // Entities can be written to the store with `.save()`
-  entity.save()
-
-  // Note: If a handler doesn't require existing field values, it is faster
-  // _not_ to load the entity from the store. Instead, create it fresh with
-  // `new Entity(...)`, set the fields that should be updated and save the
-  // entity back to the store. Fields that were not set or unset remain
-  // unchanged, allowing for partial updates to be applied.
-
-  // It is also possible to access smart contracts from mappings. For
-  // example, the contract that has emitted the event can be connected to
-  // with:
-  //
-  // let contract = Contract.bind(event.address)
-  //
-  // The following functions can then be called on this contract to access
-  // state variables and other data:
-  //
-  // - contract.CHANNEL_ADDRESS(...)
-  // - contract.COMM_CONTRACT_ADDRESS(...)
-  // - contract.addressExists(...)
-  // - contract.beneficaries(...)
-  // - contract.checkUpkeep(...)
-  // - contract.generateTransactionReference(...)
-  // - contract.getAddress(...)
-  // - contract.getTokenBalance(...)
-  // - contract.getTransaction(...)
-  // - contract.getUsername(...)
-  // - contract.listCounter(...)
-  // - contract.profileImage(...)
-  // - contract.profilePicture(...)
-  // - contract.senderNonce(...)
-  // - contract.transactionList(...)
-  // - contract.transactions(...)
-  // - contract.userName(...)
-  // - contract.userNameAddress(...)
-  // - contract.userNameExistence(...)
+  beneficiaryEntity.save();
 }
 
-export function handleAngel__AccountCreated(
-  event: Angel__AccountCreated
-): void {}
+export function handleAssetSent(event: AssetSentEvent): void {
+  let txEntity = TransactionEntity.load(
+    generateTransactionEntityId(
+      event.params.txReference,
+      event.params.sender,
+      event.params.recipient
+    )
+  );
 
-export function handleAssetClaimed(event: AssetClaimed): void {}
+  if (!txEntity)
+    txEntity = new TransactionEntity(
+      generateTransactionEntityId(
+        event.params.txReference,
+        event.params.sender,
+        event.params.recipient
+      )
+    );
 
-export function handleAssetReclaimed(event: AssetReclaimed): void {}
+  txEntity.sender = event.params.sender;
+  txEntity.senderUserName = event.params.senderUserName;
+  txEntity.recipient = event.params.recipient;
+  txEntity.recipientUserName = event.params.recipientUserName;
+  txEntity.asset = event.params.asset;
+  txEntity.amountOrTokenId = event.params.amount;
+  txEntity.narration = event.params.narration;
+  txEntity.status = event.params.status;
+  txEntity.txReference = event.params.txReference;
+  txEntity.time = event.params.time;
+  txEntity.txType = event.params.txType;
 
-export function handleAssetSent(event: AssetSent): void {}
+  txEntity.claimTime = BigInt.zero();
+  txEntity.reclaimTime = BigInt.zero();
+
+  txEntity.save();
+}
+
+export function handleAssetClaimed(event: AssetClaimedEvent): void {
+  let txEntity = TransactionEntity.load(
+    generateTransactionEntityId(
+      event.params.txReference,
+      event.params.sender,
+      event.params.recipient
+    )
+  );
+
+  if (!txEntity)
+    txEntity = new TransactionEntity(
+      generateTransactionEntityId(
+        event.params.txReference,
+        event.params.sender,
+        event.params.recipient
+      )
+    );
+
+  txEntity.recipientUserName = event.params.recipientUserName;
+  txEntity.status = event.params.status;
+
+  txEntity.claimTime = event.block.timestamp;
+  txEntity.reclaimTime = BigInt.zero();
+
+  txEntity.save();
+}
+
+export function handleAssetReclaimed(event: AssetReclaimedEvent): void {
+  let txEntity = TransactionEntity.load(
+    generateTransactionEntityId(
+      event.params.txReference,
+      event.params.sender,
+      event.params.recipient
+    )
+  );
+
+  if (!txEntity)
+    txEntity = new TransactionEntity(
+      generateTransactionEntityId(
+        event.params.txReference,
+        event.params.sender,
+        event.params.recipient
+      )
+    );
+
+  txEntity.recipientUserName = event.params.recipientUserName;
+  txEntity.status = event.params.status;
+
+  txEntity.claimTime = BigInt.zero();
+  txEntity.reclaimTime = event.block.timestamp;
+
+  txEntity.save();
+}
+
+function generateTransactionEntityId(
+  txRef: Bytes,
+  sender: Address,
+  recipient: Address
+): string {
+  return txRef.toHexString() + sender.toHexString() + recipient.toHexString();
+}
+
+function generateBeneficiaryID(
+  txHash: Bytes,
+  sender: Address,
+  beneficiary: Address
+): string {
+  return (
+    txHash.toHexString() + sender.toHexString() + beneficiary.toHexString()
+  );
+}

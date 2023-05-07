@@ -1,6 +1,6 @@
 specVersion: 0.0.5
 schema:
-  file: ./schema.graphql
+  file: schema.graphql
 dataSources:
   - kind: ethereum
     name: Angel
@@ -21,7 +21,7 @@ dataSources:
         - AssetSent
       abis:
         - name: Angel
-          file: ./abis/Angel.json
+          file: Angel/abis/Angel.json
       eventHandlers:
         - event: AddedBeneficiary(address,address)
           handler: handleAddedBeneficiary
@@ -31,4 +31,4 @@ dataSources:
           handler: handleAssetReclaimed
         - event: AssetSent(address,string,address,string,address,uint256,string,uint8,bytes32,uint256,bool)
           handler: handleAssetSent
-      file: ./src/angel.ts
+      file: Angel/Angel.wasm
