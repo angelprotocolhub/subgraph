@@ -1,0 +1,36 @@
+specVersion: 0.0.5
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: Angel
+    network: mumbai
+    source:
+      address: "0x68876bcabd609dBDf92573616007AC3a95e46788"
+      abi: Angel
+      startBlock: 35276896
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - AddedBeneficiary
+        - Angel__AccountCreated
+        - AssetClaimed
+        - AssetReclaimed
+        - AssetSent
+      abis:
+        - name: Angel
+          file: ./abis/Angel.json
+      eventHandlers:
+        - event: AddedBeneficiary(address,address)
+          handler: handleAddedBeneficiary
+        - event: Angel__AccountCreated(address,string)
+          handler: handleAngel__AccountCreated
+        - event: AssetClaimed(address,string,address,string,address,uint256,uint8,bytes32,uint256,bool)
+          handler: handleAssetClaimed
+        - event: AssetReclaimed(address,string,address,string,address,uint256,uint8,bytes32,uint256,bool)
+          handler: handleAssetReclaimed
+        - event: AssetSent(address,string,address,string,address,uint256,string,uint8,bytes32,uint256,bool)
+          handler: handleAssetSent
+      file: ./src/angel.ts
